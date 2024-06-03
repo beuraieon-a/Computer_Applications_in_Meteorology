@@ -10,6 +10,7 @@ import xarray as xr
 import metpy.calc as mpcalc
 from metpy.units import units
 import cartopy.crs as ccrs
+from geopy.distance import geodesic
 import matplotlib.pyplot as plt
 from matplotlib.colorbar import ColorbarBase
 from matplotlib.colors import Normalize
@@ -442,14 +443,19 @@ for product in steering_product:
             
         fig = plt.figure(figsize=(25., 25.), dpi=250)
         ax = plt.axes(projection=ccrs.PlateCarree())
-        # ax.set_extent([90, 180, -10, 50], ccrs.PlateCarree())
-        ax.set_extent([100, 150, -5, 40], ccrs.PlateCarree())
+        ax.set_extent([90, 180, -10, 50], ccrs.PlateCarree())
+        # ax.set_extent([100, 150, -5, 40], ccrs.PlateCarree())
         
         # Add gridlines
-        # gridlines = ax.gridlines(draw_labels=True, xlocs=np.arange(-180, 181, 10), ylocs=np.arange(-90, 91, 10), color='gray', linestyle='--')
-        gridlines = ax.gridlines(draw_labels=True, xlocs=np.arange(-180, 181, 5), ylocs=np.arange(-90, 91, 5), color='gray', linestyle='--')
+        gridlines = ax.gridlines(draw_labels=True, xlocs=np.arange(-180, 181, 10), ylocs=np.arange(-90, 91, 10), color='gray', linestyle='--')
+        # gridlines = ax.gridlines(draw_labels=True, xlocs=np.arange(-180, 181, 5), ylocs=np.arange(-90, 91, 5), color='gray', linestyle='--')
         gridlines.top_labels = False
         gridlines.right_labels = False
+        
+        # Adding the boundary of the Philippine Area of Responsibility (PAR)
+        PAR_longitudes = [120, 135, 135, 115, 115, 120, 120]
+        PAR_latitudes = [25, 25, 5, 5, 15, 21, 25]
+        ax.plot(PAR_longitudes, PAR_latitudes, color='black', linewidth=3, transform=ccrs.PlateCarree(), linestyle='--')
         
         # Visualizing wind speed and magnitude of relative vorticity
         if(product == 'Wind velocity'):
@@ -472,6 +478,13 @@ for product in steering_product:
         ax.plot(longitude_fordisplacement, latitude_fordisplacement, 'k-X', transform=ccrs.PlateCarree(), linewidth=5, markersize=15)
         ax.plot(longitude_forcurrentposition, latitude_forcurrentposition, 'ro', transform=ccrs.PlateCarree(), markersize=15)
         
+        # Calculating the TC's average forward speed
+        current_position = (latitude[count], longitude[count])
+        position_6hrlater = (latitude[count+1], longitude[count+1])
+        
+        displacement_6hr = geodesic(current_position, position_6hrlater)
+        forward_speed = round(displacement_6hr.kilometers / 6, 1)
+        
         # Adding a colorbar
         if(product == 'Wind velocity'):
             cax = fig.add_axes([0.92, 0.25, 0.02, 0.5])
@@ -485,9 +498,9 @@ for product in steering_product:
             colorbar.set_label('Relative vorticity (1/s)')
         
         # Adding plot title and captions
-        title = 'Environmental steering [' + time[:10] + ' ' + time[11:16] + ' UTC, ' + steering_layer + ']\nTyphoon SAOLA @ CentPress: ' + str(tc_central_pressure[count]) + ' hPa, 10-min MSW: ' + str(round((max_sustained_winds_knots[count]*1.852)/5)*5) + ' km/h'
-        # plt.suptitle(title, x=0.125, y=0.786, fontsize=20, ha='left', va='top')
-        plt.suptitle(title, x=0.125, y=0.877, fontsize=20, ha='left', va='top')
+        title = 'Environmental steering [' + time[:10] + ' ' + time[11:16] + ' UTC, ' + steering_layer + ']\nTyphoon SAOLA @ CentPress: ' + str(tc_central_pressure[count]) + ' hPa, 10-min MSW: ' + str(round((max_sustained_winds_knots[count]*1.852)/5)*5) + ' km/h, Ave. forward speed: ' + str(forward_speed) + ' km/h'
+        plt.suptitle(title, x=0.125, y=0.786, fontsize=20, ha='left', va='top')
+        # plt.suptitle(title, x=0.125, y=0.877, fontsize=20, ha='left', va='top')
         
         plt.show()
     
@@ -500,7 +513,7 @@ for product in steering_product:
         count = count + 1
         
         # Should stop at index = 37, this is to make sure the program ends without incurring any errors
-        if(count == 1):
+        if(count == 37):
             count = 0
             break
 
